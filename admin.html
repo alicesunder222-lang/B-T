@@ -135,7 +135,6 @@
             display: none;
         }
 
-        /* ✨ การ์ดคดี + อนิเมชั่น Depth Lift + Slide Delete */
         .case-card { 
             border: 1px solid #e0e0e0; 
             border-radius: 8px; 
@@ -152,7 +151,6 @@
             border-color: #f0b3b3;
         }
 
-        /* เอฟเฟกต์การ์ดสไลด์หายตอนลบ */
         .case-card.deleting {
             transform: translateX(100%) scale(0.9);
             opacity: 0;
@@ -179,7 +177,6 @@
 
         .hidden { display: none !important; }
 
-        /* ✨ CUSTOM MODAL POP-UP (ยืดหยุ่น Bounce นุ่มๆ) */
         #customModal {
             position: fixed;
             top: 0; left: 0; width: 100vw; height: 100vh;
@@ -217,7 +214,6 @@
 </head>
 <body>
 
-    <!-- ✨ CUSTOM POP-UP MODAL -->
     <div id="customModal">
         <div class="modal-box">
             <div class="modal-title" id="modalTitle">⚠️ ยืนยันการลบข้อมูล</div>
@@ -267,7 +263,7 @@
                             <input type="password" id="offPass" class="input-text" required placeholder="password">
                         </div>
                     </div>
-                    <button type="submit" class="btn-save" style="background: #0056b3; width: 100%; margin-top: 5px;">➕ เพิ่มเจ้าหน้าที่ใหม่ลง Firebase</button>
+                    <button type="submit" class="btn-save" style="background: #0056b3; width: 100%; margin-top: 5px;">➕ เพิ่มเจ้าหน้าที่ใหม่ลง Realtime Database</button>
                 </form>
 
                 <h4 style="margin-top: 15px; font-size: 14px; color: #004085;">รายชื่อเจ้าหน้าที่ในระบบ</h4>
@@ -336,37 +332,54 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { 
-            getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy 
-        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+            getDatabase, ref, push, set, update, remove, onValue 
+        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
         const firebaseConfig = {
             apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            authDomain: "peverell-8586f.firebaseapp.com",
+            databaseURL: "https://peverell-8586f-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "peverell-8586f",
+            storageBucket: "peverell-8586f.appspot.com",
             messagingSenderId: "YOUR_SENDER_ID",
             appId: "YOUR_APP_ID"
         };
 
         const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+        const db = getDatabase(app);
 
         window.db = db;
-        window.fbOps = { collection, addDoc, updateDoc, deleteDoc, doc };
+        window.rtdbOps = { ref, push, set, update, remove };
 
-        const casesRef = collection(db, "discipline_cases");
-        const qCases = query(casesRef, orderBy("recordDate", "desc"));
-
-        onSnapshot(qCases, (snapshot) => {
-            window.casesData = snapshot.docs.map(d => ({ firestoreId: d.id, ...d.data() }));
+        // ดึงรายการคดี Realtime
+        const casesRef = ref(db, 'discipline_cases');
+        onValue(casesRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                window.casesData = Object.keys(data).map(key => ({
+                    firestoreId: key,
+                    ...data[key]
+                })).reverse();
+            } else {
+                window.casesData = [];
+            }
             renderAdminList();
         });
 
+        // ดึงรายการเจ้าหน้าที่ Realtime
         const role = sessionStorage.getItem('user_role');
         if (role === 'admin') {
-            const officersRef = collection(db, "officers");
-            onSnapshot(officersRef, (snapshot) => {
-                window.officersData = snapshot.docs.map(d => ({ firestoreId: d.id, ...d.data() }));
+            const officersRef = ref(db, 'officers');
+            onValue(officersRef, (snapshot) => {
+                const data = snapshot.val();
+                if (data) {
+                    window.officersData = Object.keys(data).map(key => ({
+                        firestoreId: key,
+                        ...data[key]
+                    }));
+                } else {
+                    window.officersData = [];
+                }
                 renderOfficerList();
             });
         }
@@ -411,13 +424,14 @@
 
         async function addOfficer(e) {
             e.preventDefault();
-            const { collection, addDoc } = window.fbOps;
+            const { ref, push, set } = window.rtdbOps;
             const name = document.getElementById('offName').value.trim();
             const username = document.getElementById('offUser').value.trim();
             const password = document.getElementById('offPass').value.trim();
 
             try {
-                await addDoc(collection(window.db, "officers"), { name, username, password });
+                const newRef = push(ref(window.db, 'officers'));
+                await set(newRef, { name, username, password });
                 document.getElementById('offName').value = '';
                 document.getElementById('offUser').value = '';
                 document.getElementById('offPass').value = '';
@@ -447,8 +461,8 @@
 
         function confirmDeleteOfficer(firestoreId, name) {
             openModal('⚠️ ลบเจ้าหน้าที่', `คุณต้องการลบเจ้าหน้าที่ "${name}" ใช่หรือไม่?`, async () => {
-                const { doc, deleteDoc } = window.fbOps;
-                await deleteDoc(doc(window.db, "officers", firestoreId));
+                const { ref, remove } = window.rtdbOps;
+                await remove(ref(window.db, `officers/${firestoreId}`));
             });
         }
 
@@ -474,116 +488,4 @@
                             <span>วันที่: ${c.recordDate || '-'}</span>
                         </div>
                         <div class="case-body">
-                            <div><strong>ชื่อผู้ผิด:</strong> ${c.person || '-'} | <strong>หน่วยงาน:</strong> ${c.agency || '-'}</div>
-                            <div style="margin: 8px 0; padding: 8px 10px; background: #fff5f5; border-left: 3px solid #800000; border-radius: 2px;">
-                                <strong>หมายเหตุ:</strong> ${c.note || '-'}
-                            </div>
-                            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #666;">
-                                <span>บันทึกโดย: ${c.recorder || '-'}</span>
-                                <div>
-                                    <button onclick="startEdit(${index})" class="btn-edit">✏️ แก้ไข</button>
-                                    ${deleteBtnHtml}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                `;
-            });
-        }
-
-        function confirmDeleteCase(index) {
-            openModal('⚠️ ยืนยันการลบคดี', 'คุณแน่ใจหรือไม่ว่าต้องการลบคดีนี้ออกจากระบบ?', async () => {
-                const cardEl = document.getElementById(`card-${index}`);
-                if (cardEl) {
-                    cardEl.classList.add('deleting'); // เล่นอนิเมชั่นสไลด์ออกก่อน
-                    setTimeout(async () => {
-                        const cases = window.casesData || [];
-                        const targetDocId = cases[index].firestoreId;
-                        const { doc, deleteDoc } = window.fbOps;
-                        await deleteDoc(doc(window.db, "discipline_cases", targetDocId));
-                        resetForm();
-                    }, 400);
-                }
-            });
-        }
-
-        function startEdit(index) {
-            const cases = window.casesData || [];
-            const targetCase = cases[index];
-            
-            document.getElementById('editIndex').value = index;
-            document.getElementById('person').value = targetCase.person || '';
-            document.getElementById('agency').value = targetCase.agency || '';
-            document.getElementById('recordDate').value = targetCase.recordDate || '';
-            document.getElementById('recorder').value = targetCase.recorder || '';
-            document.getElementById('note').value = targetCase.note || '';
-
-            document.getElementById('formBox').classList.add('edit-mode');
-            document.getElementById('formTitleText').innerText = '✏️ แก้ไขข้อมูลคดี';
-            document.getElementById('editingIdText').innerText = `(กำลังแก้ไข ID: ${targetCase.id || ''})`;
-            
-            const btnSubmit = document.getElementById('btnSubmit');
-            btnSubmit.innerText = '💾 บันทึกการแก้ไข';
-            
-            document.getElementById('btnCancel').style.display = 'block';
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
-        function resetForm() {
-            document.getElementById('editIndex').value = "-1";
-            document.getElementById('person').value = "";
-            document.getElementById('agency').value = "";
-            document.getElementById('note').value = "";
-            document.getElementById('recordDate').valueAsDate = new Date();
-
-            if (role === 'officer' && officerName !== 'แอดมิน') {
-                document.getElementById('recorder').value = officerName;
-            } else {
-                document.getElementById('recorder').value = "";
-            }
-
-            document.getElementById('formBox').classList.remove('edit-mode');
-            document.getElementById('formTitleText').innerText = '+ บันทึกคดีความผิดใหม่';
-            document.getElementById('editingIdText').innerText = '';
-            
-            document.getElementById('btnSubmit').innerText = '💾 บันทึกข้อมูลเข้าระบบ';
-            document.getElementById('btnCancel').style.display = 'none';
-        }
-
-        async function handleFormSubmit(e) {
-            e.preventDefault();
-            const cases = window.casesData || [];
-            const editIndex = parseInt(document.getElementById('editIndex').value);
-            const { collection, addDoc, updateDoc, doc } = window.fbOps;
-
-            const caseData = {
-                person: document.getElementById('person').value.trim(),
-                agency: document.getElementById('agency').value.trim(),
-                recordDate: document.getElementById('recordDate').value,
-                recorder: document.getElementById('recorder').value.trim(),
-                note: document.getElementById('note').value.trim()
-            };
-
-            try {
-                if (editIndex === -1) {
-                    caseData.id = 'REC-' + Math.floor(100 + Math.random() * 900);
-                    caseData.createdAt = new Date().toISOString();
-                    await addDoc(collection(window.db, "discipline_cases"), caseData);
-                } else {
-                    const targetDocId = cases[editIndex].firestoreId;
-                    const docRef = doc(window.db, "discipline_cases", targetDocId);
-                    await updateDoc(docRef, caseData);
-                }
-                resetForm();
-            } catch (error) {
-                console.error("Firebase Save Error: ", error);
-            }
-        }
-
-        function logout() {
-            sessionStorage.clear();
-            window.location.href = 'home.html';
-        }
-    </script>
-</body>
-</html>
+                            <div><strong>ชื่อผู้ผิด:</strong> ${c.person || '-
