@@ -1,0 +1,589 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ระบบจัดการคดี - แอดมิน / เจ้าหน้าที่</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Sarabun', sans-serif; }
+        
+        body {
+            background: linear-gradient(135deg, #1a0005 0%, #4a000b 50%, #800000 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: flex-start;
+            padding: 30px 15px;
+        }
+
+        .main-container {
+            width: 100%;
+            max-width: 850px;
+            background: #ffffff;
+            border-radius: 16px;
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
+            overflow: hidden;
+            margin: auto;
+            position: relative;
+            animation: pageFadeIn 0.5s cubic-bezier(0.16, 1, 0.3, 1) ease-out;
+        }
+
+        @keyframes pageFadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .header-banner {
+            background: linear-gradient(135deg, #800000 0%, #4a0000 100%);
+            padding: 20px;
+            text-align: center;
+            color: white;
+            border-bottom: 3px solid #ffd700;
+        }
+
+        .header-title { font-size: 24px; font-weight: 700; }
+        .role-badge { font-size: 13px; color: #ffd700; margin-top: 4px; }
+
+        .user-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 20px;
+            background: #f9f9f9;
+            border-bottom: 1px solid #eee;
+            font-size: 13.5px;
+        }
+
+        .btn-logout {
+            background: #cc0000;
+            color: #ffffff;
+            border: none;
+            padding: 6px 14px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn-logout:hover { background: #990000; transform: translateY(-1px); }
+
+        .content-area { padding: 25px 30px; }
+
+        .form-box {
+            background: #fff8f8;
+            border: 1.5px solid #f0b3b3;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 25px;
+            transition: all 0.3s;
+        }
+
+        .form-box.edit-mode {
+            background: #fffdf0;
+            border-color: #ffd700;
+            box-shadow: 0 0 15px rgba(255, 215, 0, 0.2);
+        }
+
+        .form-title {
+            font-size: 16px;
+            font-weight: 700;
+            color: #800000;
+            margin-bottom: 15px;
+            border-bottom: 1px dashed #f0b3b3;
+            padding-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+        }
+
+        .form-group { margin-bottom: 12px; }
+        .form-group label { display: block; font-size: 13px; font-weight: 600; color: #444; margin-bottom: 4px; }
+        
+        .input-text {
+            width: 100%;
+            padding: 9px 12px;
+            border: 1px solid #ccc;
+            border-radius: 6px;
+            font-size: 14px;
+            outline: none;
+            transition: 0.2s;
+        }
+        .input-text:focus { border-color: #800000; box-shadow: 0 0 0 3px rgba(128,0,0,0.1); }
+
+        .btn-save {
+            flex: 1;
+            background: #008000;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 6px;
+            font-weight: 600;
+            font-size: 14px;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn-save:hover { opacity: 0.9; transform: translateY(-1px); }
+
+        .btn-cancel {
+            background: #7f8c8d;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            display: none;
+        }
+
+        /* ✨ การ์ดคดี + อนิเมชั่น Depth Lift + Slide Delete */
+        .case-card { 
+            border: 1px solid #e0e0e0; 
+            border-radius: 8px; 
+            margin-bottom: 12px; 
+            overflow: hidden; 
+            background: #fff;
+            transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+            animation: cardAppear 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .case-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.08);
+            border-color: #f0b3b3;
+        }
+
+        /* เอฟเฟกต์การ์ดสไลด์หายตอนลบ */
+        .case-card.deleting {
+            transform: translateX(100%) scale(0.9);
+            opacity: 0;
+            max-height: 0;
+            margin-bottom: 0;
+            padding: 0;
+            border: none;
+            transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .case-header { background: #800000; color: #fff; padding: 8px 15px; font-size: 13px; font-weight: 600; display: flex; justify-content: space-between; }
+        .case-body { padding: 12px 15px; font-size: 13.5px; color: #333; }
+
+        .btn-edit { background: #f39c12; color: white; border: none; padding: 4px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: 600; }
+        .btn-delete { background: #cc0000; color: white; border: none; padding: 4px 12px; border-radius: 4px; font-size: 12px; cursor: pointer; font-weight: 600; }
+        .btn-edit:hover, .btn-delete:hover { opacity: 0.85; }
+
+        .officer-table { width: 100%; border-collapse: collapse; font-size: 13.5px; margin-top: 10px; }
+        .officer-table th, .officer-table td { border: 1px solid #e0e0e0; padding: 8px 12px; text-align: left; }
+        .officer-table th { background: #800000; color: white; }
+        
+        .officer-row { animation: rowFadeIn 0.3s ease-out forwards; }
+        @keyframes rowFadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+        .hidden { display: none !important; }
+
+        /* ✨ CUSTOM MODAL POP-UP (ยืดหยุ่น Bounce นุ่มๆ) */
+        #customModal {
+            position: fixed;
+            top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.6);
+            backdrop-filter: blur(5px);
+            z-index: 1000;
+            display: flex; justify-content: center; align-items: center;
+            opacity: 0; pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        #customModal.active { opacity: 1; pointer-events: all; }
+
+        .modal-box {
+            background: #ffffff;
+            border-radius: 14px;
+            padding: 25px;
+            width: 90%; max-width: 400px;
+            text-align: center;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.3);
+            transform: scale(0.8) translateY(20px);
+            transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        #customModal.active .modal-box {
+            transform: scale(1) translateY(0);
+        }
+
+        .modal-title { font-size: 18px; font-weight: 700; color: #800000; margin-bottom: 10px; }
+        .modal-desc { font-size: 14px; color: #555; margin-bottom: 20px; }
+        .modal-btns { display: flex; gap: 10px; justify-content: center; }
+        .modal-btn-confirm { background: #cc0000; color: white; border: none; padding: 8px 20px; border-radius: 6px; font-weight: 600; cursor: pointer; }
+        .modal-btn-cancel { background: #7f8c8d; color: white; border: none; padding: 8px 20px; border-radius: 6px; font-weight: 600; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <!-- ✨ CUSTOM POP-UP MODAL -->
+    <div id="customModal">
+        <div class="modal-box">
+            <div class="modal-title" id="modalTitle">⚠️ ยืนยันการลบข้อมูล</div>
+            <div class="modal-desc" id="modalDesc">คุณต้องการลบรายการนี้ออกจากระบบใช่หรือไม่?</div>
+            <div class="modal-btns">
+                <button id="modalConfirmBtn" class="modal-btn-confirm">ยืนยันการลบ</button>
+                <button onclick="closeModal()" class="modal-btn-cancel">ยกเลิก</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="main-container">
+        <div class="header-banner">
+            <h1 class="header-title">ระบบจัดการข้อมูลคดีความผิดทางวินัย</h1>
+            <div id="roleBadge" class="role-badge"></div>
+        </div>
+
+        <div class="user-bar">
+            <div>
+                <a href="home.html" style="color: #800000; font-weight: 600; text-decoration: none;">← หน้าตรวจสอบ (ประชาชน)</a>
+            </div>
+            <div>
+                <span id="userInfo" style="margin-right: 10px; font-weight: 600; color: #333;"></span>
+                <button onclick="logout()" class="btn-logout">ออกจากระบบ</button>
+            </div>
+        </div>
+
+        <div class="content-area">
+
+            <div id="officerManagementSection" class="form-box hidden" style="background: #f0f7ff; border-color: #b3d4fc;">
+                <div class="form-title" style="color: #004085; border-bottom-color: #b3d4fc;">
+                    <span>👮‍♂️ [Admin] จัดการบัญชีผู้ใช้งานเจ้าหน้าที่</span>
+                </div>
+
+                <form onsubmit="addOfficer(event)">
+                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+                        <div class="form-group">
+                            <label>ชื่อเจ้าหน้าที่ (แสดงในคดี)</label>
+                            <input type="text" id="offName" class="input-text" required placeholder="เช่น ร.อ. สมชาย">
+                        </div>
+                        <div class="form-group">
+                            <label>Username</label>
+                            <input type="text" id="offUser" class="input-text" required placeholder="username">
+                        </div>
+                        <div class="form-group">
+                            <label>Password</label>
+                            <input type="password" id="offPass" class="input-text" required placeholder="password">
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-save" style="background: #0056b3; width: 100%; margin-top: 5px;">➕ เพิ่มเจ้าหน้าที่ใหม่ลง Firebase</button>
+                </form>
+
+                <h4 style="margin-top: 15px; font-size: 14px; color: #004085;">รายชื่อเจ้าหน้าที่ในระบบ</h4>
+                <table class="officer-table">
+                    <thead>
+                        <tr>
+                            <th>ชื่อเจ้าหน้าที่</th>
+                            <th>Username</th>
+                            <th>จัดการ</th>
+                        </tr>
+                    </thead>
+                    <tbody id="officerListBody">
+                        <tr><td colspan="3" style="text-align:center; color:#888;">กำลังโหลดรายชื่อเจ้าหน้าที่...</td></tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="formBox" class="form-box">
+                <div class="form-title">
+                    <span id="formTitleText">+ บันทึกคดีความผิดใหม่</span>
+                    <span id="editingIdText" style="font-size: 12px; color: #e67e22;"></span>
+                </div>
+                <form onsubmit="handleFormSubmit(event)">
+                    <input type="hidden" id="editIndex" value="-1">
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div class="form-group">
+                            <label>ชื่อ-นามสกุลผู้ผิด *</label>
+                            <input type="text" id="person" class="input-text" required placeholder="กรุณากรอกข้อมูล">
+                        </div>
+                        <div class="form-group">
+                            <label>หน่วยงาน/สังกัด *</label>
+                            <input type="text" id="agency" class="input-text" required placeholder="กรอกหน่วยงาน">
+                        </div>
+                    </div>
+
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px;">
+                        <div class="form-group">
+                            <label>วันที่ลงบันทึก *</label>
+                            <input type="date" id="recordDate" class="input-text" required>
+                        </div>
+                        <div class="form-group">
+                            <label>ชื่อผู้ลงบันทึก *</label>
+                            <input type="text" id="recorder" class="input-text" required placeholder="ยศ / ชื่อผู้ลงบันทึก">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>หมายเหตุ / รายละเอียดความผิด *</label>
+                        <textarea id="note" class="input-text" rows="3" required placeholder="กรอกรายละเอียดความผิดทางวินัย..."></textarea>
+                    </div>
+
+                    <div style="display: flex; gap: 10px; margin-top: 5px;">
+                        <button type="submit" id="btnSubmit" class="btn-save">💾 บันทึกข้อมูลเข้าระบบ</button>
+                        <button type="button" id="btnCancel" onclick="resetForm()" class="btn-cancel">ยกเลิก</button>
+                    </div>
+                </form>
+            </div>
+
+            <h3 style="font-size: 16px; color: #800000; margin-bottom: 12px; font-weight: 700;">รายการคดีทั้งหมดในระบบ</h3>
+            <div id="adminCaseList"></div>
+
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+        import { 
+            getFirestore, collection, addDoc, updateDoc, deleteDoc, doc, onSnapshot, query, orderBy 
+        } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        window.db = db;
+        window.fbOps = { collection, addDoc, updateDoc, deleteDoc, doc };
+
+        const casesRef = collection(db, "discipline_cases");
+        const qCases = query(casesRef, orderBy("recordDate", "desc"));
+
+        onSnapshot(qCases, (snapshot) => {
+            window.casesData = snapshot.docs.map(d => ({ firestoreId: d.id, ...d.data() }));
+            renderAdminList();
+        });
+
+        const role = sessionStorage.getItem('user_role');
+        if (role === 'admin') {
+            const officersRef = collection(db, "officers");
+            onSnapshot(officersRef, (snapshot) => {
+                window.officersData = snapshot.docs.map(d => ({ firestoreId: d.id, ...d.data() }));
+                renderOfficerList();
+            });
+        }
+    </script>
+
+    <script>
+        const role = sessionStorage.getItem('user_role');
+        const officerName = sessionStorage.getItem('officer_name') || 'แอดมิน';
+
+        if (!role) {
+            window.location.href = 'home.html';
+        }
+
+        if (role === 'admin') {
+            document.getElementById('officerManagementSection').classList.remove('hidden');
+        }
+
+        document.getElementById('roleBadge').innerText = role === 'admin' 
+            ? 'Admin - จัดการ คดี แก้ไข ลบ และเพิ่มเจ้าหน้าที่ได้' 
+            : 'สิทธิ์ใช้งาน: เจ้าหน้าที่ (Officer - เพิ่มและแก้ไขคดีได้)';
+
+        document.getElementById('userInfo').innerText = `ผู้ใช้งาน: ${officerName}`;
+        document.getElementById('recordDate').valueAsDate = new Date();
+
+        if (role === 'officer' && officerName !== 'แอดมิน') {
+            document.getElementById('recorder').value = officerName;
+        }
+
+        function openModal(title, desc, onConfirm) {
+            document.getElementById('modalTitle').innerText = title;
+            document.getElementById('modalDesc').innerText = desc;
+            document.getElementById('customModal').classList.add('active');
+            document.getElementById('modalConfirmBtn').onclick = () => {
+                closeModal();
+                onConfirm();
+            };
+        }
+
+        function closeModal() {
+            document.getElementById('customModal').classList.remove('active');
+        }
+
+        async function addOfficer(e) {
+            e.preventDefault();
+            const { collection, addDoc } = window.fbOps;
+            const name = document.getElementById('offName').value.trim();
+            const username = document.getElementById('offUser').value.trim();
+            const password = document.getElementById('offPass').value.trim();
+
+            try {
+                await addDoc(collection(window.db, "officers"), { name, username, password });
+                document.getElementById('offName').value = '';
+                document.getElementById('offUser').value = '';
+                document.getElementById('offPass').value = '';
+            } catch (err) { console.error(err); }
+        }
+
+        function renderOfficerList() {
+            const officers = window.officersData || [];
+            const tbody = document.getElementById('officerListBody');
+            tbody.innerHTML = '';
+
+            if (officers.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="3" style="text-align:center; color:#888;">ยังไม่มีเจ้าหน้าที่ในระบบ</td></tr>`;
+                return;
+            }
+
+            officers.forEach((off, i) => {
+                tbody.innerHTML += `
+                    <tr class="officer-row" style="animation-delay: ${i * 0.05}s;">
+                        <td>${off.name}</td>
+                        <td>${off.username}</td>
+                        <td><button onclick="confirmDeleteOfficer('${off.firestoreId}', '${off.name}')" class="btn-delete">ลบ</button></td>
+                    </tr>
+                `;
+            });
+        }
+
+        function confirmDeleteOfficer(firestoreId, name) {
+            openModal('⚠️ ลบเจ้าหน้าที่', `คุณต้องการลบเจ้าหน้าที่ "${name}" ใช่หรือไม่?`, async () => {
+                const { doc, deleteDoc } = window.fbOps;
+                await deleteDoc(doc(window.db, "officers", firestoreId));
+            });
+        }
+
+        function renderAdminList() {
+            const cases = window.casesData || [];
+            const container = document.getElementById('adminCaseList');
+            container.innerHTML = '';
+
+            if (cases.length === 0) {
+                container.innerHTML = `<div style="text-align:center; padding: 20px; color: #888;">ยังไม่มีรายการคดีในระบบ</div>`;
+                return;
+            }
+
+            cases.forEach((c, index) => {
+                const deleteBtnHtml = (role === 'admin') 
+                    ? `<button onclick="confirmDeleteCase(${index})" class="btn-delete">🗑️ ลบ</button>` 
+                    : '';
+
+                container.innerHTML += `
+                    <div class="case-card" id="card-${index}">
+                        <div class="case-header">
+                            <span>ID: ${c.id || '-'}</span>
+                            <span>วันที่: ${c.recordDate || '-'}</span>
+                        </div>
+                        <div class="case-body">
+                            <div><strong>ชื่อผู้ผิด:</strong> ${c.person || '-'} | <strong>หน่วยงาน:</strong> ${c.agency || '-'}</div>
+                            <div style="margin: 8px 0; padding: 8px 10px; background: #fff5f5; border-left: 3px solid #800000; border-radius: 2px;">
+                                <strong>หมายเหตุ:</strong> ${c.note || '-'}
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: #666;">
+                                <span>บันทึกโดย: ${c.recorder || '-'}</span>
+                                <div>
+                                    <button onclick="startEdit(${index})" class="btn-edit">✏️ แก้ไข</button>
+                                    ${deleteBtnHtml}
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+
+        function confirmDeleteCase(index) {
+            openModal('⚠️ ยืนยันการลบคดี', 'คุณแน่ใจหรือไม่ว่าต้องการลบคดีนี้ออกจากระบบ?', async () => {
+                const cardEl = document.getElementById(`card-${index}`);
+                if (cardEl) {
+                    cardEl.classList.add('deleting'); // เล่นอนิเมชั่นสไลด์ออกก่อน
+                    setTimeout(async () => {
+                        const cases = window.casesData || [];
+                        const targetDocId = cases[index].firestoreId;
+                        const { doc, deleteDoc } = window.fbOps;
+                        await deleteDoc(doc(window.db, "discipline_cases", targetDocId));
+                        resetForm();
+                    }, 400);
+                }
+            });
+        }
+
+        function startEdit(index) {
+            const cases = window.casesData || [];
+            const targetCase = cases[index];
+            
+            document.getElementById('editIndex').value = index;
+            document.getElementById('person').value = targetCase.person || '';
+            document.getElementById('agency').value = targetCase.agency || '';
+            document.getElementById('recordDate').value = targetCase.recordDate || '';
+            document.getElementById('recorder').value = targetCase.recorder || '';
+            document.getElementById('note').value = targetCase.note || '';
+
+            document.getElementById('formBox').classList.add('edit-mode');
+            document.getElementById('formTitleText').innerText = '✏️ แก้ไขข้อมูลคดี';
+            document.getElementById('editingIdText').innerText = `(กำลังแก้ไข ID: ${targetCase.id || ''})`;
+            
+            const btnSubmit = document.getElementById('btnSubmit');
+            btnSubmit.innerText = '💾 บันทึกการแก้ไข';
+            
+            document.getElementById('btnCancel').style.display = 'block';
+            window.scrollTo({ top: 0, behavior: 'smooth' });
+        }
+
+        function resetForm() {
+            document.getElementById('editIndex').value = "-1";
+            document.getElementById('person').value = "";
+            document.getElementById('agency').value = "";
+            document.getElementById('note').value = "";
+            document.getElementById('recordDate').valueAsDate = new Date();
+
+            if (role === 'officer' && officerName !== 'แอดมิน') {
+                document.getElementById('recorder').value = officerName;
+            } else {
+                document.getElementById('recorder').value = "";
+            }
+
+            document.getElementById('formBox').classList.remove('edit-mode');
+            document.getElementById('formTitleText').innerText = '+ บันทึกคดีความผิดใหม่';
+            document.getElementById('editingIdText').innerText = '';
+            
+            document.getElementById('btnSubmit').innerText = '💾 บันทึกข้อมูลเข้าระบบ';
+            document.getElementById('btnCancel').style.display = 'none';
+        }
+
+        async function handleFormSubmit(e) {
+            e.preventDefault();
+            const cases = window.casesData || [];
+            const editIndex = parseInt(document.getElementById('editIndex').value);
+            const { collection, addDoc, updateDoc, doc } = window.fbOps;
+
+            const caseData = {
+                person: document.getElementById('person').value.trim(),
+                agency: document.getElementById('agency').value.trim(),
+                recordDate: document.getElementById('recordDate').value,
+                recorder: document.getElementById('recorder').value.trim(),
+                note: document.getElementById('note').value.trim()
+            };
+
+            try {
+                if (editIndex === -1) {
+                    caseData.id = 'REC-' + Math.floor(100 + Math.random() * 900);
+                    caseData.createdAt = new Date().toISOString();
+                    await addDoc(collection(window.db, "discipline_cases"), caseData);
+                } else {
+                    const targetDocId = cases[editIndex].firestoreId;
+                    const docRef = doc(window.db, "discipline_cases", targetDocId);
+                    await updateDoc(docRef, caseData);
+                }
+                resetForm();
+            } catch (error) {
+                console.error("Firebase Save Error: ", error);
+            }
+        }
+
+        function logout() {
+            sessionStorage.clear();
+            window.location.href = 'home.html';
+        }
+    </script>
+</body>
+</html>

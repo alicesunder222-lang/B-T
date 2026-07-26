@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>บัญชีวินัยเลว - หน้าแรก</title>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@400;600;700&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Sarabun', sans-serif; }
+        
+        body {
+            /* พื้นหลัง Gradient แดง-ส้ม-เหลือง ถอดแบบพิกเซลต่อพิกเซล */
+            background: linear-gradient(135deg, #ff003c 0%, #ff5200 50%, #ff8c00 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        /* การ์ดขาวตรงกลางมีเงาสนิท */
+        .welcome-card {
+            background: #ffffff;
+            width: 100%;
+            max-width: 480px;
+            border-radius: 12px;
+            box-shadow: 0 15px 30px rgba(0, 0, 0, 0.25);
+            padding: 40px 20px;
+            text-align: center;
+        }
+
+        .logo {
+            width: 110px;
+            height: 110px;
+            margin: 0 auto 15px;
+            display: block;
+        }
+
+        .title {
+            font-size: 26px;
+            font-weight: 700;
+            color: #800000;
+            margin-bottom: 8px;
+        }
+
+        .badge-subtitle {
+            display: inline-block;
+            background: #800000;
+            color: #ffffff;
+            font-size: 13px;
+            padding: 4px 16px;
+            border-radius: 6px;
+            font-weight: 500;
+            margin-bottom: 25px;
+        }
+
+        .btn-enter {
+            background: #800000;
+            color: #ffffff;
+            border: 1.5px solid #ffd700;
+            padding: 10px 36px;
+            font-size: 16px;
+            font-weight: 600;
+            border-radius: 6px;
+            cursor: pointer;
+            text-decoration: none;
+            display: inline-block;
+            transition: transform 0.1s, background 0.2s;
+        }
+
+        .btn-enter:hover {
+            background: #600000;
+            transform: scale(1.02);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="welcome-card">
+        <img src="logocat.png" class="logo" alt="ตราสัญลักษณ์">
+        
+        <h1 class="title">บัญชีวินัยเลว</h1>
+        <div class="badge-subtitle">ระบบฐานข้อมูลบันทึกความผิดทางวินัย</div>
+        
+        <br>
+        <a href="home.html" class="btn-enter">เข้าสู่ระบบ</a>
+    </div>
+
+</body>
+</html>
