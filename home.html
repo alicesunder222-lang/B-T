@@ -107,7 +107,6 @@
         .btn-search { background: #800000; color: white; border: none; padding: 10px 24px; border-radius: 6px; font-weight: 600; cursor: pointer; transition: 0.2s; }
         .btn-search:hover { background: #600000; }
 
-        /* ✨ อนิเมชั่น Depth Lift บนการ์ด */
         .case-card { 
             border: 1px solid #e0e0e0; 
             border-radius: 10px; 
@@ -173,7 +172,6 @@
 
         .hidden { display: none !important; }
 
-        /* ✨ FULLSCREEN PREMIUM LOADER OVERLAY */
         #premiumLoader {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -242,7 +240,7 @@
                     <button onclick="renderData()" class="btn-search">ตรวจสอบ</button>
                 </div>
 
-                <p id="totalText" style="font-size: 13px; color: #666; margin-bottom: 15px;">กำลังเชื่อมต่อฐานข้อมูล...</p>
+                <p id="totalText" style="font-size: 13px; color: #666; margin-bottom: 15px;">กำลังเชื่อมต่อฐานข้อมูล Realtime...</p>
                 <div id="casesList"></div>
             </div>
 
@@ -270,32 +268,41 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
-        import { getFirestore, collection, onSnapshot, query, orderBy, getDocs, where } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
+        import { getDatabase, ref, onValue, get, child } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
+        // Firebase Config เชื่อมกับ Realtime Database URL ของคุณ
         const firebaseConfig = {
             apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_PROJECT_ID.appspot.com",
+            authDomain: "peverell-8586f.firebaseapp.com",
+            databaseURL: "https://peverell-8586f-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "peverell-8586f",
+            storageBucket: "peverell-8586f.appspot.com",
             messagingSenderId: "YOUR_SENDER_ID",
             appId: "YOUR_APP_ID"
         };
 
         const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
+        const db = getDatabase(app);
 
         window.db = db;
-        window.fbOps = { collection, query, where, getDocs };
+        window.rtdbOps = { ref, get, child };
 
-        const casesRef = collection(db, "discipline_cases");
-        const q = query(casesRef, orderBy("recordDate", "desc"));
-
-        onSnapshot(q, (snapshot) => {
-            window.casesData = snapshot.docs.map(doc => ({ firestoreId: doc.id, ...doc.data() }));
+        // โหลดข้อมูลคดี Realtime
+        const casesRef = ref(db, 'discipline_cases');
+        onValue(casesRef, (snapshot) => {
+            const data = snapshot.val();
+            if (data) {
+                window.casesData = Object.keys(data).map(key => ({
+                    firestoreId: key,
+                    ...data[key]
+                })).reverse();
+            } else {
+                window.casesData = [];
+            }
             renderData();
         }, (error) => {
             console.error(error);
-            document.getElementById('totalText').innerText = "เกิดข้อผิดพลาดในการโหลดข้อมูล";
+            document.getElementById('totalText').innerText = "เกิดข้อผิดพลาดในการเชื่อมต่อฐานข้อมูล";
         });
     </script>
 
@@ -352,7 +359,7 @@
             }
 
             filtered.forEach((c, index) => {
-                const delay = index * 0.05; // เอฟเฟกต์ Stagger ทยอยขึ้นทีละการ์ด
+                const delay = index * 0.05;
                 listContainer.innerHTML += `
                     <div class="case-card" style="animation-delay: ${delay}s;">
                         <div class="case-header">
@@ -386,24 +393,34 @@
             showLoader('VERIFYING OFFICER...', 'กำลังตรวจสอบฐานข้อมูลเจ้าหน้าที่');
 
             try {
-                const { collection, query, where, getDocs } = window.fbOps;
-                const officersRef = collection(window.db, "officers");
-                const q = query(officersRef, where("username", "==", username), where("password", "==", password));
-                const querySnapshot = await getDocs(q);
+                const { ref, get, child } = window.rtdbOps;
+                const dbRef = ref(window.db);
+                const snapshot = await get(child(dbRef, 'officers'));
 
                 await new Promise(r => setTimeout(r, 800));
 
-                if (!querySnapshot.empty) {
-                    const officerData = querySnapshot.docs[0].data();
-                    sessionStorage.setItem('user_role', 'officer');
-                    sessionStorage.setItem('officer_name', officerData.name || username);
-                    
-                    showLoader('ACCESS GRANTED', 'ยินดีต้อนรับเข้าสู่ระบบ...');
-                    setTimeout(() => window.location.href = 'admin.html', 600);
-                } else {
-                    hideLoader();
-                    alert('❌ ชื่อผู้ใช้หรือรหัสผ่านเจ้าหน้าที่ไม่ถูกต้อง!');
+                if (snapshot.exists()) {
+                    const officers = snapshot.val();
+                    let foundOfficer = null;
+
+                    Object.keys(officers).forEach(key => {
+                        if (officers[key].username === username && officers[key].password === password) {
+                            foundOfficer = officers[key];
+                        }
+                    });
+
+                    if (foundOfficer) {
+                        sessionStorage.setItem('user_role', 'officer');
+                        sessionStorage.setItem('officer_name', foundOfficer.name || username);
+                        
+                        showLoader('ACCESS GRANTED', 'ยินดีต้อนรับเข้าสู่ระบบ...');
+                        setTimeout(() => window.location.href = 'admin.html', 600);
+                        return;
+                    }
                 }
+
+                hideLoader();
+                alert('❌ ชื่อผู้ใช้หรือรหัสผ่านเจ้าหน้าที่ไม่ถูกต้อง!');
             } catch (err) {
                 console.error(err);
                 hideLoader();
@@ -431,3 +448,4 @@
     </script>
 </body>
 </html>
+
