@@ -135,7 +135,7 @@
             display: none;
         }
 
-        /* การ์ดคดี + อนิเมชั่น Delete */
+        /* ✨ การ์ดคดี + อนิเมชั่น Depth Lift + Slide Delete */
         .case-card { 
             border: 1px solid #e0e0e0; 
             border-radius: 8px; 
@@ -143,6 +143,7 @@
             overflow: hidden; 
             background: #fff;
             transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+            animation: cardAppear 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
 
         .case-card:hover {
@@ -151,6 +152,7 @@
             border-color: #f0b3b3;
         }
 
+        /* เอฟเฟกต์การ์ดสไลด์หายตอนลบ */
         .case-card.deleting {
             transform: translateX(100%) scale(0.9);
             opacity: 0;
@@ -177,7 +179,7 @@
 
         .hidden { display: none !important; }
 
-        /* POP-UP MODAL */
+        /* ✨ CUSTOM MODAL POP-UP (ยืดหยุ่น Bounce นุ่มๆ) */
         #customModal {
             position: fixed;
             top: 0; left: 0; width: 100vw; height: 100vh;
@@ -215,7 +217,7 @@
 </head>
 <body>
 
-    <!-- POP-UP MODAL -->
+    <!-- ✨ CUSTOM POP-UP MODAL -->
     <div id="customModal">
         <div class="modal-box">
             <div class="modal-title" id="modalTitle">⚠️ ยืนยันการลบข้อมูล</div>
@@ -245,7 +247,6 @@
 
         <div class="content-area">
 
-            <!-- ส่วนจัดการเจ้าหน้าที่ (สำหรับ Admin) -->
             <div id="officerManagementSection" class="form-box hidden" style="background: #f0f7ff; border-color: #b3d4fc;">
                 <div class="form-title" style="color: #004085; border-bottom-color: #b3d4fc;">
                     <span>👮‍♂️ [Admin] จัดการบัญชีผู้ใช้งานเจ้าหน้าที่</span>
@@ -266,7 +267,7 @@
                             <input type="password" id="offPass" class="input-text" required placeholder="password">
                         </div>
                     </div>
-                    <button type="submit" class="btn-save" style="background: #0056b3; width: 100%; margin-top: 5px;">➕ เพิ่มเจ้าหน้าที่ใหม่ลง Realtime Database</button>
+                    <button type="submit" class="btn-save" style="background: #0056b3; width: 100%; margin-top: 5px;">➕ เพิ่มเจ้าหน้าที่ใหม่ลง Firebase</button>
                 </form>
 
                 <h4 style="margin-top: 15px; font-size: 14px; color: #004085;">รายชื่อเจ้าหน้าที่ในระบบ</h4>
@@ -284,7 +285,6 @@
                 </table>
             </div>
 
-            <!-- ฟอร์มบันทึก / แก้ไขคดี -->
             <div id="formBox" class="form-box">
                 <div class="form-title">
                     <span id="formTitleText">+ บันทึกคดีความผิดใหม่</span>
@@ -333,14 +333,12 @@
         </div>
     </div>
 
-    <!-- Firebase Realtime Database SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { 
-            getDatabase, ref, push, set, update, remove, onValue 
+            getDatabase, ref, push, set, update, remove, onValue, query, orderByChild 
         } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
-        // 🔥 ใส่ค่า API Key และ Config ของคุณตรงนี้แล้วเรียบร้อยครับ
         const firebaseConfig = {
             apiKey: "AIzaSyBgSzd_kF_trchOPJFGzCD4ySW9c5u7slU",
             authDomain: "peverell-8586f.firebaseapp.com",
@@ -357,41 +355,38 @@
         window.db = db;
         window.rtdbOps = { ref, push, set, update, remove };
 
-        // ดึงคดีRealtime
-        const casesRef = ref(db, 'discipline_cases');
+        const casesRef = query(ref(db, "discipline_cases"), orderByChild("recordDate"));
+
         onValue(casesRef, (snapshot) => {
             const data = snapshot.val();
+            const casesArr = [];
             if (data) {
-                window.casesData = Object.keys(data).map(key => ({
-                    rtdbKey: key,
-                    ...data[key]
-                })).reverse();
-            } else {
-                window.casesData = [];
+                Object.keys(data).forEach(key => {
+                    casesArr.push({ rtdbKey: key, ...data[key] });
+                });
+                casesArr.sort((a, b) => (b.recordDate || '').localeCompare(a.recordDate || ''));
             }
+            window.casesData = casesArr;
             renderAdminList();
         });
 
-        // ดึงรายชื่อเจ้าหน้าที่ Realtime (สำหรับ Admin)
         const role = sessionStorage.getItem('user_role');
         if (role === 'admin') {
-            const officersRef = ref(db, 'officers');
+            const officersRef = ref(db, "officers");
             onValue(officersRef, (snapshot) => {
                 const data = snapshot.val();
+                const officersArr = [];
                 if (data) {
-                    window.officersData = Object.keys(data).map(key => ({
-                        rtdbKey: key,
-                        ...data[key]
-                    }));
-                } else {
-                    window.officersData = [];
+                    Object.keys(data).forEach(key => {
+                        officersArr.push({ rtdbKey: key, ...data[key] });
+                    });
                 }
+                window.officersData = officersArr;
                 renderOfficerList();
             });
         }
     </script>
 
-    <!-- Logic ทำงานหลักของระบบ -->
     <script>
         const role = sessionStorage.getItem('user_role');
         const officerName = sessionStorage.getItem('officer_name') || 'แอดมิน';
@@ -429,7 +424,6 @@
             document.getElementById('customModal').classList.remove('active');
         }
 
-        /* --- เพิ่มเจ้าหน้าที่ใหม่ --- */
         async function addOfficer(e) {
             e.preventDefault();
             const { ref, push, set } = window.rtdbOps;
@@ -438,7 +432,7 @@
             const password = document.getElementById('offPass').value.trim();
 
             try {
-                const newRef = push(ref(window.db, 'officers'));
+                const newRef = push(ref(window.db, "officers"));
                 await set(newRef, { name, username, password });
                 document.getElementById('offName').value = '';
                 document.getElementById('offUser').value = '';
@@ -446,7 +440,6 @@
             } catch (err) { console.error(err); }
         }
 
-        /* --- แสดงรายการเจ้าหน้าที่ --- */
         function renderOfficerList() {
             const officers = window.officersData || [];
             const tbody = document.getElementById('officerListBody');
@@ -468,15 +461,13 @@
             });
         }
 
-        /* --- ลบเจ้าหน้าที่ --- */
         function confirmDeleteOfficer(rtdbKey, name) {
             openModal('⚠️ ลบเจ้าหน้าที่', `คุณต้องการลบเจ้าหน้าที่ "${name}" ใช่หรือไม่?`, async () => {
                 const { ref, remove } = window.rtdbOps;
-                await remove(ref(window.db, `officers/${rtdbKey}`));
+                await remove(ref(window.db, "officers/" + rtdbKey));
             });
         }
 
-        /* --- แสดงรายการคดี --- */
         function renderAdminList() {
             const cases = window.casesData || [];
             const container = document.getElementById('adminCaseList');
@@ -489,4 +480,9 @@
 
             cases.forEach((c, index) => {
                 const deleteBtnHtml = (role === 'admin') 
-                    ? `<button onclick="confirmDeleteCase(${index})" class="btn-delete">🗑️ ลบ</b
+                    ? `<button onclick="confirmDeleteCase(${index})" class="btn-delete">🗑️ ลบ</button>` 
+                    : '';
+
+                container.innerHTML += `
+                    <div class="case-card" id="card-${index}">
+                        <div class="case
