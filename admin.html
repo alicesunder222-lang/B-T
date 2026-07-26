@@ -135,6 +135,7 @@
             display: none;
         }
 
+        /* การ์ดคดี + อนิเมชั่น Delete */
         .case-card { 
             border: 1px solid #e0e0e0; 
             border-radius: 8px; 
@@ -142,7 +143,6 @@
             overflow: hidden; 
             background: #fff;
             transition: all 0.35s cubic-bezier(0.16, 1, 0.3, 1);
-            animation: cardAppear 0.4s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
 
         .case-card:hover {
@@ -177,6 +177,7 @@
 
         .hidden { display: none !important; }
 
+        /* POP-UP MODAL */
         #customModal {
             position: fixed;
             top: 0; left: 0; width: 100vw; height: 100vh;
@@ -214,6 +215,7 @@
 </head>
 <body>
 
+    <!-- POP-UP MODAL -->
     <div id="customModal">
         <div class="modal-box">
             <div class="modal-title" id="modalTitle">⚠️ ยืนยันการลบข้อมูล</div>
@@ -243,6 +245,7 @@
 
         <div class="content-area">
 
+            <!-- ส่วนจัดการเจ้าหน้าที่ (สำหรับ Admin) -->
             <div id="officerManagementSection" class="form-box hidden" style="background: #f0f7ff; border-color: #b3d4fc;">
                 <div class="form-title" style="color: #004085; border-bottom-color: #b3d4fc;">
                     <span>👮‍♂️ [Admin] จัดการบัญชีผู้ใช้งานเจ้าหน้าที่</span>
@@ -281,6 +284,7 @@
                 </table>
             </div>
 
+            <!-- ฟอร์มบันทึก / แก้ไขคดี -->
             <div id="formBox" class="form-box">
                 <div class="form-title">
                     <span id="formTitleText">+ บันทึกคดีความผิดใหม่</span>
@@ -329,22 +333,23 @@
         </div>
     </div>
 
+    <!-- Firebase Realtime Database SDK -->
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
         import { 
             getDatabase, ref, push, set, update, remove, onValue 
         } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
 
+        // 🔥 ใส่ค่า API Key และ Config ของคุณตรงนี้แล้วเรียบร้อยครับ
         const firebaseConfig = {
-    apiKey: "AIzaSyBgSzd_kF_trchOPJFGzCD4ySW9c5u7slU",
-    authDomain: "peverell-8586f.firebaseapp.com",
-    databaseURL: "https://peverell-8586f-default-rtdb.asia-southeast1.firebasedatabase.app",
-    projectId: "peverell-8586f",
-    storageBucket: "peverell-8586f.firebasestorage.app",
-    messagingSenderId: "734130665475",
-    appId: "1:734130665475:web:cf567d3bac2d5408237636"
-};
-        
+            apiKey: "AIzaSyBgSzd_kF_trchOPJFGzCD4ySW9c5u7slU",
+            authDomain: "peverell-8586f.firebaseapp.com",
+            databaseURL: "https://peverell-8586f-default-rtdb.asia-southeast1.firebasedatabase.app",
+            projectId: "peverell-8586f",
+            storageBucket: "peverell-8586f.firebasestorage.app",
+            messagingSenderId: "734130665475",
+            appId: "1:734130665475:web:cf567d3bac2d5408237636"
+        };
 
         const app = initializeApp(firebaseConfig);
         const db = getDatabase(app);
@@ -352,13 +357,13 @@
         window.db = db;
         window.rtdbOps = { ref, push, set, update, remove };
 
-        // ดึงรายการคดี Realtime
+        // ดึงคดีRealtime
         const casesRef = ref(db, 'discipline_cases');
         onValue(casesRef, (snapshot) => {
             const data = snapshot.val();
             if (data) {
                 window.casesData = Object.keys(data).map(key => ({
-                    firestoreId: key,
+                    rtdbKey: key,
                     ...data[key]
                 })).reverse();
             } else {
@@ -367,7 +372,7 @@
             renderAdminList();
         });
 
-        // ดึงรายการเจ้าหน้าที่ Realtime
+        // ดึงรายชื่อเจ้าหน้าที่ Realtime (สำหรับ Admin)
         const role = sessionStorage.getItem('user_role');
         if (role === 'admin') {
             const officersRef = ref(db, 'officers');
@@ -375,7 +380,7 @@
                 const data = snapshot.val();
                 if (data) {
                     window.officersData = Object.keys(data).map(key => ({
-                        firestoreId: key,
+                        rtdbKey: key,
                         ...data[key]
                     }));
                 } else {
@@ -386,6 +391,7 @@
         }
     </script>
 
+    <!-- Logic ทำงานหลักของระบบ -->
     <script>
         const role = sessionStorage.getItem('user_role');
         const officerName = sessionStorage.getItem('officer_name') || 'แอดมิน';
@@ -423,6 +429,7 @@
             document.getElementById('customModal').classList.remove('active');
         }
 
+        /* --- เพิ่มเจ้าหน้าที่ใหม่ --- */
         async function addOfficer(e) {
             e.preventDefault();
             const { ref, push, set } = window.rtdbOps;
@@ -439,6 +446,7 @@
             } catch (err) { console.error(err); }
         }
 
+        /* --- แสดงรายการเจ้าหน้าที่ --- */
         function renderOfficerList() {
             const officers = window.officersData || [];
             const tbody = document.getElementById('officerListBody');
@@ -454,19 +462,21 @@
                     <tr class="officer-row" style="animation-delay: ${i * 0.05}s;">
                         <td>${off.name}</td>
                         <td>${off.username}</td>
-                        <td><button onclick="confirmDeleteOfficer('${off.firestoreId}', '${off.name}')" class="btn-delete">ลบ</button></td>
+                        <td><button onclick="confirmDeleteOfficer('${off.rtdbKey}', '${off.name}')" class="btn-delete">ลบ</button></td>
                     </tr>
                 `;
             });
         }
 
-        function confirmDeleteOfficer(firestoreId, name) {
+        /* --- ลบเจ้าหน้าที่ --- */
+        function confirmDeleteOfficer(rtdbKey, name) {
             openModal('⚠️ ลบเจ้าหน้าที่', `คุณต้องการลบเจ้าหน้าที่ "${name}" ใช่หรือไม่?`, async () => {
                 const { ref, remove } = window.rtdbOps;
-                await remove(ref(window.db, `officers/${firestoreId}`));
+                await remove(ref(window.db, `officers/${rtdbKey}`));
             });
         }
 
+        /* --- แสดงรายการคดี --- */
         function renderAdminList() {
             const cases = window.casesData || [];
             const container = document.getElementById('adminCaseList');
@@ -479,14 +489,4 @@
 
             cases.forEach((c, index) => {
                 const deleteBtnHtml = (role === 'admin') 
-                    ? `<button onclick="confirmDeleteCase(${index})" class="btn-delete">🗑️ ลบ</button>` 
-                    : '';
-
-                container.innerHTML += `
-                    <div class="case-card" id="card-${index}">
-                        <div class="case-header">
-                            <span>ID: ${c.id || '-'}</span>
-                            <span>วันที่: ${c.recordDate || '-'}</span>
-                        </div>
-                        <div class="case-body">
-                            <div><strong>ชื่อผู้ผิด:</strong> ${c.person || '-
+                    ? `<button onclick="confirmDeleteCase(${index})" class="btn-delete">🗑️ ลบ</b
